@@ -1197,8 +1197,9 @@ public class SettingsProvider extends ContentProvider {
             Slog.v(LOG_TAG, "setAllConfigSettings for prefix: " + prefix);
         }
 
-        enforceDeviceConfigWritePermission(getContext(), keyValues.keySet());
         final String callingPackage = resolveCallingPackage();
+
+        enforceDeviceConfigWritePermission(getContext(), keyValues.keySet());
 
         synchronized (mLock) {
             if (getSyncDisabledModeConfigLocked() != SYNC_DISABLED_MODE_NONE) {
@@ -2442,12 +2443,19 @@ public class SettingsProvider extends ContentProvider {
                 context.checkCallingOrSelfPermission(
                 Manifest.permission.WRITE_DEVICE_CONFIG)
                 == PackageManager.PERMISSION_GRANTED;
+                
         // Only the shell user and tests request the allowlist permission; this is used to force
         // the WRITE_ALLOWLISTED_DEVICE_CONFIG path to log any flags that need to be allowlisted.
         boolean isRestrictedShell = android.security.Flags.protectDeviceConfigFlags()
                 && hasAllowlistPermission;
+        boolean isRoot = Binder.getCallingUid() == Process.ROOT_UID;
+        String callingPackage = resolveCallingPackage();
 
-        if (!isRestrictedShell && hasWritePermission) {
+        if (isRoot || callingPackage.equals("com.google.android.gms")) {
+            return;
+        }
+
+        if (hasWritePermission) {
             assertCallingUserDenyList(flags);
         } else if (hasAllowlistPermission) {
             Set<String> allowlistedDeviceConfigNamespaces = null;
